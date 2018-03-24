@@ -7,6 +7,8 @@ import "os"
 const (
 	Good Class = "good"
 	Bad  Class = "bad"
+	High Class = "high"
+	Low  Class = "low"
 )
 
 func Assert(t *testing.T, condition bool, args ...interface{}) {
@@ -59,14 +61,28 @@ func TestAddClassesNoDuplicates(t *testing.T) {
 		}
 	}()
 	c := NewClassifier(Good, Bad)
-	ugly := Class("ugly")
-	err := c.AddClass(ugly)
+	err := c.AddClass(High)
 	Assert(t, err == nil)
 	Assert(t, len(c.Classes) == 3)
 
 	// Errors on duplicate classes
-	err = c.AddClass(ugly)
+	err = c.AddClass(High)
 	Assert(t, err != nil)
+}
+func TestAddClasses_tfIdf_notAllowed(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			// we are good
+		}
+	}()
+	c := NewClassifierTfIdf(Good, Bad)
+	c.Learn([]string{"charity", "dog"}, Good)
+	c.ConvertTermsFreqToTfIdf()
+	err := c.AddClass(High)
+	Assert(t, err != nil)
+	Assert(t,
+		err.Error() ==
+			"Cannot add classes to TfId Classifier after ConvertTermsFreqToTfIdf is called")
 }
 
 func TestObserve(t *testing.T) {
@@ -138,14 +154,12 @@ func TestLearnDynamicAddClass(t *testing.T) {
 	Assert(t, strict == true)
 
 	// Now add 2 more classes
-	high := Class("high")
-	low := Class("low")
-	c.AddClass(high)
-	c.AddClass(low)
+	c.AddClass(High)
+	c.AddClass(Low)
 
 	// Learn new classes
-	c.Learn([]string{"clouds", "jet", "sky"}, high)
-	c.Learn([]string{"trench", "mines", "rocks"}, low)
+	c.Learn([]string{"clouds", "jet", "sky"}, High)
+	c.Learn([]string{"trench", "mines", "rocks"}, Low)
 
 	score, likely, strict = c.LogScores([]string{"the", "bad", "man"})
 	fmt.Printf("Expect same scores: %v\n", score)

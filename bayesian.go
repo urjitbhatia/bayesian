@@ -180,6 +180,11 @@ func NewClassifierFromReader(r io.Reader) (c *Classifier, err error) {
 
 // AddClass adds a new class to the classifier
 func (c *Classifier) AddClass(class Class) error {
+	if c.IsTfIdf() && c.DidConvertTfIdf {
+		// Not supported now - maybe we can keep non-converted class data separate if new classes get added
+		// and then merge the converted data?
+		return fmt.Errorf("Cannot add classes to TfId Classifier after ConvertTermsFreqToTfIdf is called")
+	}
 	for _, cl := range c.Classes {
 		if cl == class {
 			return fmt.Errorf("Class: %v already exists", class)
