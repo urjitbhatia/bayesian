@@ -52,6 +52,22 @@ func TestOneClass(t *testing.T) {
 	c := NewClassifier(Good)
 	Assert(t, false, "should have panicked:", c)
 }
+func TestAddClassesNoDuplicates(t *testing.T) {
+	defer func() {
+		if err := recover(); err != nil {
+			// we are good
+		}
+	}()
+	c := NewClassifier(Good, Bad)
+	ugly := Class("ugly")
+	err := c.AddClass(ugly)
+	Assert(t, err == nil)
+	Assert(t, len(c.Classes) == 3)
+
+	// Errors on duplicate classes
+	err = c.AddClass(ugly)
+	Assert(t, err != nil)
+}
 
 func TestObserve(t *testing.T) {
 	c := NewClassifier(Good, Bad)
@@ -103,6 +119,44 @@ func TestLearn(t *testing.T) {
 	Assert(t, score[0] == score[1], "not the same") // same
 	Assert(t, likely == 0, "not good")              // first one is picked
 	Assert(t, strict == false, "not strict")
+}
+func TestLearnDynamicAddClass(t *testing.T) {
+	c := NewClassifier(Good, Bad)
+	c.Learn([]string{"tall", "handsome", "rich"}, Good)
+	c.Learn([]string{"bald", "poor", "ugly"}, Bad)
+
+	score, likely, strict := c.LogScores([]string{"the", "tall", "man"})
+	fmt.Printf("Expect good scores: %v\n", score)
+	Assert(t, score[0] > score[1], "not good, round 1") // this is good
+	Assert(t, likely == 0, "not good, round 1")
+	Assert(t, strict == true, "not strict, round 1")
+
+	score, likely, strict = c.LogScores([]string{"poor", "ugly", "girl"})
+	fmt.Printf("Expect bad scores: %v\n", score)
+	Assert(t, score[0] < score[1]) // this is bad
+	Assert(t, likely == 1)
+	Assert(t, strict == true)
+
+	// Now add 2 more classes
+	high := Class("high")
+	low := Class("low")
+	c.AddClass(high)
+	c.AddClass(low)
+
+	// Learn new classes
+	c.Learn([]string{"clouds", "jet", "sky"}, high)
+	c.Learn([]string{"trench", "mines", "rocks"}, low)
+
+	score, likely, strict = c.LogScores([]string{"the", "bad", "man"})
+	fmt.Printf("Expect same scores: %v\n", score)
+	Assert(t, score[0] == score[1], "not the same") // same
+	Assert(t, likely == 0, "not good")              // first one is picked
+	Assert(t, strict == false, "not strict")
+
+	score, likely, strict = c.LogScores([]string{"high", "up", "clouds"})
+	fmt.Printf("Expect high scores: %v Likely class: %d\n", score, likely)
+	Assert(t, likely == 2, "not high") // first one is picked
+	Assert(t, strict == true, "not strict")
 }
 
 func TestProbScores(t *testing.T) {

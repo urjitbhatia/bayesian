@@ -3,6 +3,7 @@ package bayesian
 import (
 	"encoding/gob"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -175,6 +176,18 @@ func NewClassifierFromReader(r io.Reader) (c *Classifier, err error) {
 	err = dec.Decode(w)
 
 	return &Classifier{w.Classes, w.Learned, int32(w.Seen), w.Datas, w.TfIdf, w.DidConvertTfIdf}, err
+}
+
+// AddClass adds a new class to the classifier
+func (c *Classifier) AddClass(class Class) error {
+	for _, cl := range c.Classes {
+		if cl == class {
+			return fmt.Errorf("Class: %v already exists", class)
+		}
+	}
+	c.Classes = append(c.Classes, class)
+	c.datas[class] = newClassData()
+	return nil
 }
 
 // getPriors returns the prior probabilities for the
